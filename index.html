@@ -32,69 +32,69 @@
 
     <script>
         let localStream;
-        const peer = new Peer();
+        let peer = new Peer(); // Creates a new PeerJS connection
+        let remotePeerId = new URLSearchParams(window.location.search).get("join"); // Get ID from URL if joining
 
         // Get camera and microphone access
         navigator.mediaDevices.getUserMedia({ video: true, audio: true })
             .then((stream) => {
                 localStream = stream;
                 document.getElementById("myVideo").srcObject = stream;
+                
+                // Now that we have the stream, setup PeerJS event listeners
+                setupPeerListeners();
             })
             .catch((error) => {
                 console.error("Camera access denied!", error);
                 alert("Please allow camera & microphone access in browser settings.");
             });
 
-        // When PeerJS generates an ID
-        peer.on("open", (id) => {
-            document.getElementById("myPeerId").textContent = id;
-            const gameURL = `${window.location.origin}?join=${id}`;
-            document.getElementById("callLink").value = gameURL;
-        });
+        function setupPeerListeners() {
+            peer.on("open", (id) => {
+                document.getElementById("myPeerId").textContent = id;
+                document.getElementById("callLink").value = `${window.location.origin}?join=${id}`;
+                
+                if (remotePeerId) {
+                    autoConnect(remotePeerId);
+                }
+            });
 
-        function copyLink() {
-            navigator.clipboard.writeText(document.getElementById("callLink").value);
-            alert("Link copied! Send it to Person B.");
+            peer.on("call", (call) => {
+                console.log("Incoming call...");
+                call.answer(localStream);
+                call.on("stream", (remoteStream) => {
+                    document.getElementById("remoteVideo").srcObject = remoteStream;
+                });
+            });
         }
 
         function startCall() {
             copyLink();
+            alert("Link copied! Send it to Person B.");
+        }
+
+        function copyLink() {
+            navigator.clipboard.writeText(document.getElementById("callLink").value);
         }
 
         function connectToPeer() {
-            const remotePeerId = document.getElementById("peerIdInput").value;
-            if (remotePeerId) {
-                const call = peer.call(remotePeerId, localStream);
-                call.on("stream", (remoteStream) => {
-                    document.getElementById("remoteVideo").srcObject = remoteStream;
-                });
+            let remotePeerIdInput = document.getElementById("peerIdInput").value;
+            if (remotePeerIdInput) {
+                callPeer(remotePeerIdInput);
             }
         }
 
-        // Listen for incoming calls
-        peer.on("call", (call) => {
-            call.answer(localStream);
+        function callPeer(peerId) {
+            let call = peer.call(peerId, localStream);
             call.on("stream", (remoteStream) => {
                 document.getElementById("remoteVideo").srcObject = remoteStream;
             });
-        });
+        }
 
-        // Auto-connect if Person B joins via link
-        const urlParams = new URLSearchParams(window.location.search);
-        const remotePeerId = urlParams.get("join");
-
-        if (remotePeerId) {
-            // Hide controls for Person B
-            document.getElementById("controls").style.display = "none";
-
-            peer.on("open", () => {
-                const call = peer.call(remotePeerId, localStream);
-                call.on("stream", (remoteStream) => {
-                    document.getElementById("remoteVideo").srcObject = remoteStream;
-                });
-            });
+        function autoConnect(remoteId) {
+            console.log("Auto-connecting to", remoteId);
+            setTimeout(() => callPeer(remoteId), 2000); // Delay auto-connect to ensure peer is ready
         }
     </script>
-
 </body>
 </html>
