@@ -16,9 +16,7 @@
     <h2>Virtual Holi - Video Call</h2>
 
     <div class="container">
-        <!-- Local Video -->
         <video id="myVideo" autoplay playsinline muted></video>
-        <!-- Remote Video -->
         <video id="remoteVideo" autoplay playsinline></video>
 
         <div class="buttons">
@@ -36,7 +34,7 @@
         let localStream;
         const peer = new Peer();
 
-        // Request access to the webcam & microphone
+        // Get camera and microphone access
         navigator.mediaDevices.getUserMedia({ video: true, audio: true })
             .then((stream) => {
                 localStream = stream;
@@ -47,7 +45,7 @@
                 alert("Please allow camera & microphone access in Safari settings.");
             });
 
-        // Generate a PeerJS ID and display it
+        // Generate Peer ID and create shareable link
         peer.on("open", (id) => {
             document.getElementById("myPeerId").textContent = id;
             const gameURL = `${window.location.origin}?join=${id}`;
@@ -81,14 +79,16 @@
             });
         });
 
-        // Auto-connect if a link is used
+        // Auto-connect if the URL contains "?join=ID"
         const urlParams = new URLSearchParams(window.location.search);
         const remotePeerId = urlParams.get("join");
 
         if (remotePeerId) {
-            const call = peer.call(remotePeerId, localStream);
-            call.on("stream", (remoteStream) => {
-                document.getElementById("remoteVideo").srcObject = remoteStream;
+            peer.on("open", () => {
+                const call = peer.call(remotePeerId, localStream);
+                call.on("stream", (remoteStream) => {
+                    document.getElementById("remoteVideo").srcObject = remoteStream;
+                });
             });
         }
     </script>
