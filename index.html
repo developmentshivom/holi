@@ -19,15 +19,15 @@
         <video id="myVideo" autoplay playsinline muted></video>
         <video id="remoteVideo" autoplay playsinline></video>
 
-        <div class="buttons">
+        <div class="buttons" id="controls">
             <button onclick="startCall()">Start Call</button>
             <input type="text" id="peerIdInput" placeholder="Enter ID to connect">
             <button onclick="connectToPeer()">Connect</button>
+            <br>
+            <p>Your ID: <span id="myPeerId">Generating...</span></p>
+            <input type="text" id="callLink" readonly>
+            <button onclick="copyLink()">Copy Link</button>
         </div>
-
-        <p>Your ID: <span id="myPeerId">Generating...</span></p>
-        <input type="text" id="callLink" readonly>
-        <button onclick="copyLink()">Copy Link</button>
     </div>
 
     <script>
@@ -42,10 +42,10 @@
             })
             .catch((error) => {
                 console.error("Camera access denied!", error);
-                alert("Please allow camera & microphone access in Safari settings.");
+                alert("Please allow camera & microphone access in browser settings.");
             });
 
-        // Generate Peer ID and create shareable link
+        // When PeerJS generates an ID
         peer.on("open", (id) => {
             document.getElementById("myPeerId").textContent = id;
             const gameURL = `${window.location.origin}?join=${id}`;
@@ -79,11 +79,14 @@
             });
         });
 
-        // Auto-connect if the URL contains "?join=ID"
+        // Auto-connect if Person B joins via link
         const urlParams = new URLSearchParams(window.location.search);
         const remotePeerId = urlParams.get("join");
 
         if (remotePeerId) {
+            // Hide controls for Person B
+            document.getElementById("controls").style.display = "none";
+
             peer.on("open", () => {
                 const call = peer.call(remotePeerId, localStream);
                 call.on("stream", (remoteStream) => {
