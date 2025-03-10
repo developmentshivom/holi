@@ -20,36 +20,61 @@
         <video id="remoteVideo" autoplay></video>
 
         <div class="buttons">
-            <button onclick="startCall()">Start Call</button>
-            <input type="text" id="peerIdInput" placeholder="Enter ID to connect">
-            <button onclick="connectToPeer()">Connect</button>
+            <button onclick="startCall()">Generate Link</button>
+            <input type="text" id="callLink" readonly style="width: 80%;">
         </div>
 
         <p>Your ID: <span id="myPeerId">Generating...</span></p>
     </div>
 
     <script>
-    peer.on("open", (id) => {
-        const gameURL = `${window.location.origin}?join=${id}`;
-        document.getElementById("callLink").value = gameURL;
-    });
+        let peer = new Peer();
+        let localStream;
+        const myVideo = document.getElementById("myVideo");
+        const remoteVideo = document.getElementById("remoteVideo");
 
-    function startCall() {
-        navigator.clipboard.writeText(document.getElementById("callLink").value);
-        alert("Link copied! Send it to Person B.");
-    }
+        // Get webcam access
+        async function startWebcam() {
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                myVideo.srcObject = localStream;
+            } catch (error) {
+                console.error("Error accessing webcam: ", error);
+            }
+        }
+        startWebcam();
 
-    // Auto-connect if the URL contains "?join=ID"
-    const urlParams = new URLSearchParams(window.location.search);
-    const remotePeerId = urlParams.get("join");
-
-    if (remotePeerId) {
-        let call = peer.call(remotePeerId, localStream);
-        call.on("stream", (remoteStream) => {
-            remoteVideo.srcObject = remoteStream;
+        // Set Peer ID and generate join link
+        peer.on("open", (id) => {
+            document.getElementById("myPeerId").innerText = id;
+            document.getElementById("callLink").value = `${window.location.origin}?join=${id}`;
         });
-    }
-</script>
 
+        function startCall() {
+            navigator.clipboard.writeText(document.getElementById("callLink").value);
+            alert("Link copied! Send it to Person B.");
+        }
+
+        // Auto-connect if the URL contains "?join=ID"
+        const urlParams = new URLSearchParams(window.location.search);
+        const remotePeerId = urlParams.get("join");
+
+        if (remotePeerId) {
+            peer.on("open", () => {
+                let call = peer.call(remotePeerId, localStream);
+                call.on("stream", (remoteStream) => {
+                    remoteVideo.srcObject = remoteStream;
+                });
+            });
+        }
+
+        // Accept incoming calls
+        peer.on("call", (call) => {
+            call.answer(localStream);
+            call.on("stream", (remoteStream) => {
+                remoteVideo.srcObject = remoteStream;
+            });
+        });
+    </script>
 </body>
 </html>
