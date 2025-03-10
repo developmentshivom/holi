@@ -29,46 +29,27 @@
     </div>
 
     <script>
-        const myVideo = document.getElementById("myVideo");
-        const remoteVideo = document.getElementById("remoteVideo");
-        let myStream;
-        let peer;
-        
-        async function startWebcam() {
-            myStream = await navigator.mediaDevices.getUserMedia({ video: true });
-            myVideo.srcObject = myStream;
-        }
+    peer.on("open", (id) => {
+        const gameURL = `${window.location.origin}?join=${id}`;
+        document.getElementById("callLink").value = gameURL;
+    });
 
-        // Initialize PeerJS
-        peer = new Peer();
+    function startCall() {
+        navigator.clipboard.writeText(document.getElementById("callLink").value);
+        alert("Link copied! Send it to Person B.");
+    }
 
-        peer.on("open", (id) => {
-            document.getElementById("myPeerId").innerText = id;
+    // Auto-connect if the URL contains "?join=ID"
+    const urlParams = new URLSearchParams(window.location.search);
+    const remotePeerId = urlParams.get("join");
+
+    if (remotePeerId) {
+        let call = peer.call(remotePeerId, localStream);
+        call.on("stream", (remoteStream) => {
+            remoteVideo.srcObject = remoteStream;
         });
+    }
+</script>
 
-        // When a call is received
-        peer.on("call", (call) => {
-            call.answer(myStream); // Answer call with our video stream
-            call.on("stream", (remoteStream) => {
-                remoteVideo.srcObject = remoteStream; // Show remote video
-            });
-        });
-
-        function startCall() {
-            alert("Share your ID with Person B to connect.");
-        }
-
-        function connectToPeer() {
-            const peerId = document.getElementById("peerIdInput").value;
-            if (!peerId) return alert("Enter a valid Peer ID!");
-
-            const call = peer.call(peerId, myStream);
-            call.on("stream", (remoteStream) => {
-                remoteVideo.srcObject = remoteStream; // Show remote video
-            });
-        }
-
-        startWebcam();
-    </script>
 </body>
 </html>
