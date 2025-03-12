@@ -30,19 +30,19 @@ const video = document.getElementById('video');
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
-// Firebase setup (Replace with your Firebase config)
+// Firebase setup
 const firebaseConfig = {
-  apiKey: "AIzaSyD9geqCCQlvh725M5aV22hYWUNa2YU6qYM",
-  authDomain: "virtual-holi-game.firebaseapp.com",
-  databaseURL: "https://virtual-holi-game-default-rtdb.firebaseio.com",
-  projectId: "virtual-holi-game",
-  storageBucket: "virtual-holi-game.firebasestorage.app",
-  messagingSenderId: "348578981043",
-  appId: "1:348578981043:web:78126b6e1605efab6afcc6",
-  measurementId: "G-9B3T81ZSR8"
+    apiKey: "AIzaSyD9geqCCQlvh725M5aV22hYWUNa2YU6qYM",
+    authDomain: "virtual-holi-game.firebaseapp.com",
+    databaseURL: "https://virtual-holi-game-default-rtdb.firebaseio.com",
+    projectId: "virtual-holi-game",
+    storageBucket: "virtual-holi-game.firebasestorage.app",
+    messagingSenderId: "348578981043",
+    appId: "1:348578981043:web:78126b6e1605efab6afcc6",
+    measurementId: "G-9B3T81ZSR8"
 };
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
 
 // Get webcam feed
 navigator.mediaDevices.getUserMedia({ video: true, audio: false })
