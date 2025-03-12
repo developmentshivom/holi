@@ -9,9 +9,10 @@
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face-detection"></script>
     <style>
         body { text-align: center; font-family: Arial, sans-serif; }
-        video { width: 300px; height: 240px; border: 2px solid #ddd; margin: 5px; }
+        video { width: 300px; height: 240px; border: 2px solid #ddd; margin: 5px; position: relative; }
         .container { display: flex; flex-wrap: wrap; justify-content: center; }
         .color-btns { margin: 10px; }
+        canvas { position: absolute; top: 0; left: 0; width: 300px; height: 240px; pointer-events: none; }
     </style>
 </head>
 <body>
@@ -26,20 +27,19 @@
     <div class="container" id="videoContainer"></div>
 
     <script>
-        const socket = io.connect(window.location.origin);
+        const socket = io("wss://opalescent-superb-sedum.glitch.me"); // Ensure correct WebSocket URL
         const peer = new Peer();
         let localStream;
         let peers = {};
         let selectedColor = "red";
 
-        // Get camera and mic access
         navigator.mediaDevices.getUserMedia({ video: true, audio: true })
             .then((stream) => {
                 localStream = stream;
-                addVideoStream(peer.id, stream, true);
 
                 peer.on("open", (id) => {
-                    socket.emit("join-room", "holi-room");
+                    socket.emit("join-room", "holi-room", id);
+                    addVideoStream(id, stream, true);
                 });
 
                 peer.on("call", (call) => {
@@ -68,32 +68,55 @@
         }
 
         function addVideoStream(id, stream, isSelf) {
+            const container = document.createElement("div");
+            container.style.position = "relative";
+            container.id = id;
+
             const video = document.createElement("video");
             video.srcObject = stream;
             video.autoplay = true;
             video.playsInline = true;
-            video.id = id;
-            video.addEventListener("click", () => applyColor(video));
-            document.getElementById("videoContainer").appendChild(video);
+            video.width = 300;
+            video.height = 240;
+            video.addEventListener("click", () => applyColor(container));
+
+            const canvas = document.createElement("canvas");
+            canvas.width = 300;
+            canvas.height = 240;
+            canvas.style.position = "absolute";
+            canvas.style.top = "0";
+            canvas.style.left = "0";
+
+            container.appendChild(video);
+            container.appendChild(canvas);
+            document.getElementById("videoContainer").appendChild(container);
         }
 
         function setColor(color) {
             selectedColor = color;
         }
 
-        function applyColor(videoElement) {
-            const ctx = document.createElement("canvas").getContext("2d");
-            ctx.canvas.width = videoElement.width;
-            ctx.canvas.height = videoElement.height;
-            ctx.drawImage(videoElement, 0, 0, ctx.canvas.width, ctx.canvas.height);
-
+        function applyColor(container) {
+            const canvas = container.querySelector("canvas");
+            const ctx = canvas.getContext("2d");
             ctx.fillStyle = selectedColor;
             ctx.globalAlpha = 0.4;
-            ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            videoElement.srcObject = null;
-            videoElement.src = ctx.canvas.toDataURL();
+            // Send color event to all peers
+            socket.emit("apply-color", { userId: container.id, color: selectedColor });
         }
+
+        socket.on("color-applied", ({ userId, color }) => {
+            const container = document.getElementById(userId);
+            if (container) {
+                const canvas = container.querySelector("canvas");
+                const ctx = canvas.getContext("2d");
+                ctx.fillStyle = color;
+                ctx.globalAlpha = 0.4;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+        });
     </script>
 </body>
 </html>
