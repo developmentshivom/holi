@@ -5,6 +5,7 @@ const remoteIdInput = document.getElementById('remote-id');
 const connectButton = document.getElementById('connect');
 const remoteVideo = document.createElement('video'); // For remote video stream
 remoteVideo.autoplay = true;
+remoteVideo.playsInline = true; // Required for mobile browsers
 document.body.appendChild(remoteVideo); // Add remote video to the page
 
 let selectedColor = 'red';
@@ -32,7 +33,7 @@ if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
   alert('Your browser does not support camera access. Please use a modern browser like Chrome or Firefox.');
 }
 
-// Initialize PeerJS with a reliable PeerServer
+// Initialize PeerJS with a reliable signaling server
 const peer = new Peer({
   host: '0.peerjs.com',
   port: 443,
