@@ -3,97 +3,96 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Virtual Holi - Video Call</title>
+    <title>Virtual Holi</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.js"></script>
     <script src="https://unpkg.com/peerjs@1.3.1/dist/peerjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face-detection"></script>
     <style>
         body { text-align: center; font-family: Arial, sans-serif; }
-        video { transform: scaleX(-1); width: 300px; height: 240px; border: 2px solid #ddd; margin: 5px; }
-        .container { display: flex; justify-content: center; align-items: center; flex-direction: column; }
-        .buttons { margin: 10px; }
+        video { width: 300px; height: 240px; border: 2px solid #ddd; margin: 5px; }
+        .container { display: flex; flex-wrap: wrap; justify-content: center; }
+        .color-btns { margin: 10px; }
     </style>
 </head>
 <body>
-    <h2>Virtual Holi - Video Call</h2>
-
-    <div class="container">
-        <video id="myVideo" autoplay playsinline muted></video>
-        <video id="remoteVideo" autoplay playsinline></video>
-
-        <div class="buttons" id="controls">
-            <button onclick="startCall()">Start Call</button>
-            <input type="text" id="peerIdInput" placeholder="Enter ID to connect">
-            <button onclick="connectToPeer()">Connect</button>
-            <br>
-            <p>Your ID: <span id="myPeerId">Generating...</span></p>
-            <input type="text" id="callLink" readonly>
-            <button onclick="copyLink()">Copy Link</button>
-        </div>
+    <h2>Virtual Holi - Play with Colors!</h2>
+    
+    <div class="color-btns">
+        <button onclick="setColor('red')">🔴 Red</button>
+        <button onclick="setColor('blue')">🔵 Blue</button>
+        <button onclick="setColor('yellow')">🟡 Yellow</button>
     </div>
 
-    <script>
-        let localStream;
-        let peer = new Peer(); // Creates a new PeerJS connection
-        let remotePeerId = new URLSearchParams(window.location.search).get("join"); // Get ID from URL if joining
+    <div class="container" id="videoContainer"></div>
 
-        // Get camera and microphone access
+    <script>
+        const socket = io.connect(window.location.origin);
+        const peer = new Peer();
+        let localStream;
+        let peers = {};
+        let selectedColor = "red";
+
+        // Get camera and mic access
         navigator.mediaDevices.getUserMedia({ video: true, audio: true })
             .then((stream) => {
                 localStream = stream;
-                document.getElementById("myVideo").srcObject = stream;
-                
-                // Now that we have the stream, setup PeerJS event listeners
-                setupPeerListeners();
-            })
-            .catch((error) => {
-                console.error("Camera access denied!", error);
-                alert("Please allow camera & microphone access in browser settings.");
-            });
+                addVideoStream(peer.id, stream, true);
 
-        function setupPeerListeners() {
-            peer.on("open", (id) => {
-                document.getElementById("myPeerId").textContent = id;
-                document.getElementById("callLink").value = `${window.location.origin}?join=${id}`;
-                
-                if (remotePeerId) {
-                    autoConnect(remotePeerId);
-                }
-            });
+                peer.on("open", (id) => {
+                    socket.emit("join-room", "holi-room");
+                });
 
-            peer.on("call", (call) => {
-                console.log("Incoming call...");
-                call.answer(localStream);
-                call.on("stream", (remoteStream) => {
-                    document.getElementById("remoteVideo").srcObject = remoteStream;
+                peer.on("call", (call) => {
+                    call.answer(localStream);
+                    call.on("stream", (userStream) => {
+                        addVideoStream(call.peer, userStream, false);
+                    });
+                });
+
+                socket.on("user-joined", (userId) => {
+                    connectToNewUser(userId, stream);
+                });
+
+                socket.on("user-left", (userId) => {
+                    if (peers[userId]) peers[userId].close();
+                    document.getElementById(userId)?.remove();
                 });
             });
-        }
 
-        function startCall() {
-            copyLink();
-            alert("Link copied! Send it to Person B.");
-        }
-
-        function copyLink() {
-            navigator.clipboard.writeText(document.getElementById("callLink").value);
-        }
-
-        function connectToPeer() {
-            let remotePeerIdInput = document.getElementById("peerIdInput").value;
-            if (remotePeerIdInput) {
-                callPeer(remotePeerIdInput);
-            }
-        }
-
-        function callPeer(peerId) {
-            let call = peer.call(peerId, localStream);
-            call.on("stream", (remoteStream) => {
-                document.getElementById("remoteVideo").srcObject = remoteStream;
+        function connectToNewUser(userId, stream) {
+            const call = peer.call(userId, stream);
+            call.on("stream", (userStream) => {
+                addVideoStream(userId, userStream, false);
             });
+            peers[userId] = call;
         }
 
-        function autoConnect(remoteId) {
-            console.log("Auto-connecting to", remoteId);
-            setTimeout(() => callPeer(remoteId), 2000); // Delay auto-connect to ensure peer is ready
+        function addVideoStream(id, stream, isSelf) {
+            const video = document.createElement("video");
+            video.srcObject = stream;
+            video.autoplay = true;
+            video.playsInline = true;
+            video.id = id;
+            video.addEventListener("click", () => applyColor(video));
+            document.getElementById("videoContainer").appendChild(video);
+        }
+
+        function setColor(color) {
+            selectedColor = color;
+        }
+
+        function applyColor(videoElement) {
+            const ctx = document.createElement("canvas").getContext("2d");
+            ctx.canvas.width = videoElement.width;
+            ctx.canvas.height = videoElement.height;
+            ctx.drawImage(videoElement, 0, 0, ctx.canvas.width, ctx.canvas.height);
+
+            ctx.fillStyle = selectedColor;
+            ctx.globalAlpha = 0.4;
+            ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+            videoElement.srcObject = null;
+            videoElement.src = ctx.canvas.toDataURL();
         }
     </script>
 </body>
