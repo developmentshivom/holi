@@ -3,11 +3,7 @@ const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 const remoteIdInput = document.getElementById('remote-id');
 const connectButton = document.getElementById('connect');
-const remoteVideo = document.createElement('video'); // For remote video stream
-remoteVideo.autoplay = true;
-remoteVideo.playsInline = true; // Required for mobile browsers
-document.body.appendChild(remoteVideo); // Add remote video to the page
-
+const remoteVideo = document.getElementById('remote-video'); // For remote video stream
 let selectedColor = 'red';
 
 // Set canvas size
