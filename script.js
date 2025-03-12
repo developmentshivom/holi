@@ -5,6 +5,18 @@ const ctx = canvas.getContext('2d');
 // WebSocket connection
 const ws = new WebSocket('wss://virtual-holi-ws.onrender.com');
 
+ws.onopen = () => {
+  console.log('Connected to WebSocket server');
+};
+
+ws.onerror = (error) => {
+  console.error('WebSocket error:', error);
+};
+
+ws.onclose = () => {
+  console.log('WebSocket connection closed');
+};
+
 // MediaPipe Face Mesh setup
 const faceMesh = new FaceMesh({
   locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`,
