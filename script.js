@@ -3,13 +3,17 @@ const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 const remoteIdInput = document.getElementById('remote-id');
 const connectButton = document.getElementById('connect');
+const remoteVideo = document.createElement('video'); // For remote video stream
+remoteVideo.autoplay = true;
+document.body.appendChild(remoteVideo); // Add remote video to the page
+
 let selectedColor = 'red';
 
 // Set canvas size
 canvas.width = 640;
 canvas.height = 480;
 
-// Start camera
+// Start local camera
 async function startCamera() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -41,6 +45,7 @@ peer.on('open', (id) => {
   alert(`Your ID: ${id}. Share this link with your friend: ${window.location.href}?id=${id}`);
 });
 
+// Handle incoming connections
 peer.on('connection', (conn) => {
   conn.on('data', (data) => {
     drawColor(data.x, data.y, data.color);
@@ -49,6 +54,21 @@ peer.on('connection', (conn) => {
   conn.on('error', (error) => {
     console.error('Connection error:', error);
     alert('Connection error. Please try again.');
+  });
+});
+
+peer.on('call', (call) => {
+  // Answer the call with the local video stream
+  call.answer(video.srcObject);
+
+  // Handle the remote video stream
+  call.on('stream', (remoteStream) => {
+    remoteVideo.srcObject = remoteStream;
+  });
+
+  call.on('error', (error) => {
+    console.error('Call error:', error);
+    alert('Call error. Please try again.');
   });
 });
 
@@ -92,6 +112,19 @@ connectButton.addEventListener('click', () => {
   conn.on('open', () => {
     console.log('Connected to:', remoteId);
     alert('Connected to the other player!');
+
+    // Call the remote peer with the local video stream
+    const call = peer.call(remoteId, video.srcObject);
+
+    // Handle the remote video stream
+    call.on('stream', (remoteStream) => {
+      remoteVideo.srcObject = remoteStream;
+    });
+
+    call.on('error', (error) => {
+      console.error('Call error:', error);
+      alert('Call error. Please try again.');
+    });
   });
 
   conn.on('data', (data) => {
