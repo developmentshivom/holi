@@ -1,3 +1,4 @@
+const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 const remoteIdInput = document.getElementById('remote-id');
@@ -7,6 +8,25 @@ let selectedColor = 'red';
 // Set canvas size
 canvas.width = 640;
 canvas.height = 480;
+
+// Start camera
+async function startCamera() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    video.srcObject = stream;
+    video.play();
+  } catch (error) {
+    console.error('Error accessing camera:', error);
+    alert('Unable to access camera. Please allow camera permissions and ensure your device has a camera.');
+  }
+}
+
+// Check if the browser supports mediaDevices
+if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+  startCamera();
+} else {
+  alert('Your browser does not support camera access. Please use a modern browser like Chrome or Firefox.');
+}
 
 // Initialize PeerJS with a reliable PeerServer
 const peer = new Peer({
