@@ -2,20 +2,30 @@ const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
+// Suppress MediaPipe warnings
+console.disableYellowBox = true;
+
 // WebSocket connection
-const ws = new WebSocket('wss://virtual-holi-ws.onrender.com');
+function connectWebSocket() {
+  const ws = new WebSocket('wss://virtual-holi-ws.onrender.com');
 
-ws.onopen = () => {
-  console.log('Connected to WebSocket server');
-};
+  ws.onopen = () => {
+    console.log('Connected to WebSocket server');
+  };
 
-ws.onerror = (error) => {
-  console.error('WebSocket error:', error);
-};
+  ws.onerror = (error) => {
+    console.error('WebSocket error:', error);
+  };
 
-ws.onclose = () => {
-  console.log('WebSocket connection closed');
-};
+  ws.onclose = () => {
+    console.log('WebSocket connection closed. Reconnecting...');
+    setTimeout(connectWebSocket, 3000); // Reconnect after 3 seconds
+  };
+
+  return ws;
+}
+
+const ws = connectWebSocket();
 
 // MediaPipe Face Mesh setup
 const faceMesh = new FaceMesh({
@@ -53,7 +63,11 @@ camera.start();
 document.querySelectorAll('.colors button').forEach((button) => {
   button.addEventListener('click', () => {
     const color = button.getAttribute('data-color');
-    ws.send(JSON.stringify({ type: 'color', color }));
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'color', color }));
+    } else {
+      console.error('WebSocket is not open');
+    }
   });
 });
 
