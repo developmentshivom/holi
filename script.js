@@ -1,6 +1,3 @@
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js';
-import { getFirestore, doc, setDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js';
-
 // Firebase configuration
 const firebaseConfig = {
   apiKey: 'YOUR_API_KEY',
@@ -12,8 +9,8 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const app = firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
 
 // DOM elements
 const localVideo = document.getElementById('localVideo');
@@ -65,7 +62,7 @@ function createPeerConnection() {
   // Handle ICE candidates
   peerConnection.onicecandidate = (event) => {
     if (event.candidate) {
-      setDoc(doc(db, 'calls', 'callee'), { iceCandidate: event.candidate }, { merge: true });
+      db.collection('calls').doc('callee').set({ iceCandidate: event.candidate }, { merge: true });
     }
   };
 }
