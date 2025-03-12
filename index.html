@@ -8,8 +8,7 @@
 </head>
 <body>
   <h1>Virtual Holi Game</h1>
-  <div class="video-container">
-    <video id="video" autoplay></video>
+  <div class="game-container">
     <canvas id="canvas"></canvas>
   </div>
   <div class="colors">
@@ -17,10 +16,11 @@
     <button data-color="blue">Blue</button>
     <button data-color="green">Green</button>
   </div>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
+  <div class="connection">
+    <input type="text" id="remote-id" placeholder="Enter remote ID">
+    <button id="connect">Connect</button>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/peerjs@1.4.7/dist/peerjs.min.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
