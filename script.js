@@ -8,12 +8,17 @@ let selectedColor = 'red';
 canvas.width = 640;
 canvas.height = 480;
 
-// Initialize PeerJS
-const peer = new Peer();
+// Initialize PeerJS with a free PeerServer
+const peer = new Peer({
+  host: '0.peerjs.com',
+  port: 443,
+  secure: true,
+  debug: 3,
+});
 
 peer.on('open', (id) => {
   console.log('My ID:', id);
-  alert(`Your ID: ${id}. Share this with your friend to connect.`);
+  alert(`Your ID: ${id}. Share this link with your friend: ${window.location.href}?id=${id}`);
 });
 
 peer.on('connection', (conn) => {
@@ -65,4 +70,12 @@ function drawColor(x, y, color) {
   ctx.beginPath();
   ctx.arc(x, y, 20, 0, 2 * Math.PI); // Circle radius: 20px
   ctx.fill();
+}
+
+// Automatically connect if a peer ID is provided in the URL
+const urlParams = new URLSearchParams(window.location.search);
+const peerId = urlParams.get('id');
+if (peerId) {
+  remoteIdInput.value = peerId;
+  connectButton.click();
 }
