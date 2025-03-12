@@ -2,6 +2,12 @@ body {
   font-family: Arial, sans-serif;
   text-align: center;
   background-color: #f0f0f0;
+  margin: 0;
+  padding: 0;
+}
+
+h1 {
+  margin-top: 20px;
 }
 
 .video-container {
@@ -9,6 +15,9 @@ body {
   margin: 20px auto;
   width: 640px;
   height: 480px;
+  border: 2px solid #ccc;
+  border-radius: 10px;
+  overflow: hidden;
 }
 
 video, canvas {
@@ -28,4 +37,12 @@ button {
   margin: 5px;
   font-size: 16px;
   cursor: pointer;
+  border: none;
+  border-radius: 5px;
+  background-color: #4CAF50;
+  color: white;
+}
+
+button:hover {
+  background-color: #45a049;
 }
