@@ -8,24 +8,18 @@
 </head>
 <body>
   <h1>Virtual Holi Game</h1>
-  <div class="game-container">
-    <video id="video" autoplay muted playsinline></video>
+  <div class="video-container">
+    <video id="localVideo" autoplay muted playsinline></video>
+    <video id="remoteVideo" autoplay playsinline></video>
     <canvas id="canvas"></canvas>
-  </div>
-  <div class="remote-container">
-    <h2>Remote Player</h2>
-    <video id="remote-video" autoplay playsinline></video>
   </div>
   <div class="colors">
     <button data-color="red">Red</button>
     <button data-color="blue">Blue</button>
     <button data-color="green">Green</button>
   </div>
-  <div class="connection">
-    <input type="text" id="remote-id" placeholder="Enter remote ID">
-    <button id="connect">Connect</button>
-  </div>
-  <script src="https://cdn.jsdelivr.net/npm/peerjs@1.4.7/dist/peerjs.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
