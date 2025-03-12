@@ -1,99 +1,68 @@
-const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
+const remoteIdInput = document.getElementById('remote-id');
+const connectButton = document.getElementById('connect');
+let selectedColor = 'red';
 
-// Suppress MediaPipe warnings
-console.disableYellowBox = true;
+// Set canvas size
+canvas.width = 640;
+canvas.height = 480;
 
-// WebSocket connection
-function connectWebSocket() {
-  const ws = new WebSocket('wss://virtual-holi-ws.onrender.com');
+// Initialize PeerJS
+const peer = new Peer();
 
-  ws.onopen = () => {
-    console.log('Connected to WebSocket server');
-  };
-
-  ws.onerror = (error) => {
-    console.error('WebSocket error:', error);
-  };
-
-  ws.onclose = () => {
-    console.log('WebSocket connection closed. Reconnecting...');
-    setTimeout(connectWebSocket, 3000); // Reconnect after 3 seconds
-  };
-
-  return ws;
-}
-
-const ws = connectWebSocket();
-
-// MediaPipe Face Mesh setup
-const faceMesh = new FaceMesh({
-  locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`,
+peer.on('open', (id) => {
+  console.log('My ID:', id);
+  alert(`Your ID: ${id}. Share this with your friend to connect.`);
 });
 
-faceMesh.setOptions({
-  maxNumFaces: 1,
-  minDetectionConfidence: 0.5,
-  minTrackingConfidence: 0.5,
-});
-
-faceMesh.onResults((results) => {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
-
-  if (results.multiFaceLandmarks) {
-    for (const landmarks of results.multiFaceLandmarks) {
-      drawLandmarks(landmarks);
-    }
-  }
-});
-
-// Start camera
-const camera = new Camera(video, {
-  onFrame: async () => {
-    await faceMesh.send({ image: video });
-  },
-  width: 640,
-  height: 480,
-});
-camera.start();
-
-// Color throwing
-document.querySelectorAll('.colors button').forEach((button) => {
-  button.addEventListener('click', () => {
-    const color = button.getAttribute('data-color');
-    if (ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ type: 'color', color }));
-    } else {
-      console.error('WebSocket is not open');
-    }
+peer.on('connection', (conn) => {
+  conn.on('data', (data) => {
+    drawColor(data.x, data.y, data.color);
   });
 });
 
-// Handle incoming WebSocket messages
-ws.onmessage = (event) => {
-  const data = JSON.parse(event.data);
-  if (data.type === 'color') {
-    applyColor(data.color);
-  }
-};
+// Handle color selection
+document.querySelectorAll('.colors button').forEach((button) => {
+  button.addEventListener('click', () => {
+    selectedColor = button.getAttribute('data-color');
+  });
+});
 
-// Apply color to the face
-function applyColor(color) {
+// Handle mouse clicks to throw colors
+canvas.addEventListener('click', (event) => {
+  const rect = canvas.getBoundingClientRect();
+  const x = event.clientX - rect.left;
+  const y = event.clientY - rect.top;
+
+  // Draw color locally
+  drawColor(x, y, selectedColor);
+
+  // Send color data to the connected peer
+  if (peer.connections.length > 0) {
+    peer.connections[0].send({ x, y, color: selectedColor });
+  }
+});
+
+// Handle connection
+connectButton.addEventListener('click', () => {
+  const remoteId = remoteIdInput.value;
+  const conn = peer.connect(remoteId);
+
+  conn.on('open', () => {
+    console.log('Connected to:', remoteId);
+    alert('Connected to the other player!');
+  });
+
+  conn.on('data', (data) => {
+    drawColor(data.x, data.y, data.color);
+  });
+});
+
+// Function to draw color on the canvas
+function drawColor(x, y, color) {
   ctx.fillStyle = color;
   ctx.beginPath();
-  ctx.arc(320, 240, 50, 0, 2 * Math.PI); // Example: Draw a circle on the face
+  ctx.arc(x, y, 20, 0, 2 * Math.PI); // Circle radius: 20px
   ctx.fill();
-}
-
-// Draw face landmarks (optional)
-function drawLandmarks(landmarks) {
-  ctx.strokeStyle = '#FF0000';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  for (const landmark of landmarks) {
-    ctx.lineTo(landmark.x * canvas.width, landmark.y * canvas.height);
-  }
-  ctx.stroke();
 }
