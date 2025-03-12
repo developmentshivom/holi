@@ -1,0 +1,12 @@
+{
+  "name": "virtual-holi-ws",
+  "version": "1.0.0",
+  "description": "WebSocket server for Virtual Holi game",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.0.0"
+  }
+}
