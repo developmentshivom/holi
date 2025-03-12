@@ -3,7 +3,7 @@ const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
 // WebSocket connection
-const ws = new WebSocket('ws://localhost:8080');
+const ws = new WebSocket('wss://virtual-holi-ws.onrender.com');
 
 // MediaPipe Face Mesh setup
 const faceMesh = new FaceMesh({
