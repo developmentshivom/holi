@@ -39,6 +39,8 @@ video, canvas {
   height: 240px;
   border: 2px solid #ccc;
   border-radius: 10px;
+  display: block;
+  margin: 0 auto;
 }
 
 .colors, .connection {
