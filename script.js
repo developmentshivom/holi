@@ -8,7 +8,7 @@ let selectedColor = 'red';
 canvas.width = 640;
 canvas.height = 480;
 
-// Initialize PeerJS with a free PeerServer
+// Initialize PeerJS with a reliable PeerServer
 const peer = new Peer({
   host: '0.peerjs.com',
   port: 443,
@@ -25,6 +25,16 @@ peer.on('connection', (conn) => {
   conn.on('data', (data) => {
     drawColor(data.x, data.y, data.color);
   });
+
+  conn.on('error', (error) => {
+    console.error('Connection error:', error);
+    alert('Connection error. Please try again.');
+  });
+});
+
+peer.on('error', (error) => {
+  console.error('PeerJS error:', error);
+  alert('PeerJS error. Please refresh the page and try again.');
 });
 
 // Handle color selection
@@ -52,6 +62,11 @@ canvas.addEventListener('click', (event) => {
 // Handle connection
 connectButton.addEventListener('click', () => {
   const remoteId = remoteIdInput.value;
+  if (!remoteId) {
+    alert('Please enter a valid ID.');
+    return;
+  }
+
   const conn = peer.connect(remoteId);
 
   conn.on('open', () => {
@@ -61,6 +76,11 @@ connectButton.addEventListener('click', () => {
 
   conn.on('data', (data) => {
     drawColor(data.x, data.y, data.color);
+  });
+
+  conn.on('error', (error) => {
+    console.error('Connection error:', error);
+    alert('Connection error. Please check the ID and try again.');
   });
 });
 
