@@ -1,103 +1,49 @@
-// Firebase configuration
-const firebaseConfig = {
-  apiKey: 'YOUR_API_KEY',
-  authDomain: 'YOUR_AUTH_DOMAIN',
-  projectId: 'YOUR_PROJECT_ID',
-  storageBucket: 'YOUR_STORAGE_BUCKET',
-  messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
-  appId: 'YOUR_APP_ID',
-};
+document.addEventListener('DOMContentLoaded', function () {
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const video = document.getElementById('video');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
 
-// Initialize Firebase
-const app = firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
+    // ✅ Ensure Firebase is loaded before initializing
+    if (typeof firebase !== 'undefined') {
+        const firebaseConfig = {
+            apiKey: "AIzaSyD9geqCCQlvh725M5aV22hYWUNa2YU6qYM",
+            authDomain: "virtual-holi-game.firebaseapp.com",
+            databaseURL: "https://virtual-holi-game-default-rtdb.firebaseio.com",
+            projectId: "virtual-holi-game",
+            storageBucket: "virtual-holi-game.firebasestorage.app",
+            messagingSenderId: "348578981043",
+            appId: "1:348578981043:web:78126b6e1605efab6afcc6",
+            measurementId: "G-9B3T81ZSR8"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
 
-// DOM elements
-const localVideo = document.getElementById('localVideo');
-const remoteVideo = document.getElementById('remoteVideo');
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
-let selectedColor = 'red';
+        // ✅ Get webcam feed
+        navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+            .then((stream) => { video.srcObject = stream; })
+            .catch((error) => console.error('Error accessing webcam:', error));
 
-// Set canvas size
-canvas.width = 640;
-canvas.height = 480;
+        // ✅ Handle click to draw
+        canvas.addEventListener('click', (e) => {
+            const x = e.clientX / canvas.width;
+            const y = e.clientY / canvas.height;
+            const color = '#' + Math.floor(Math.random() * 16777215).toString(16);
 
-// WebRTC configuration
-const servers = {
-  iceServers: [
-    { urls: 'stun:stun.l.google.com:19302' }, // Google's public STUN server
-  ],
-};
+            // ✅ Send drawing data to Firebase
+            db.ref('drawings').push({ x, y, color });
+        });
 
-let localStream;
-let remoteStream;
-let peerConnection;
-
-// Start local camera
-async function startCamera() {
-  try {
-    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-    localVideo.srcObject = localStream;
-  } catch (error) {
-    console.error('Error accessing camera:', error);
-    alert('Unable to access camera. Please allow camera permissions and ensure your device has a camera.');
-  }
-}
-
-// Create peer connection
-function createPeerConnection() {
-  peerConnection = new RTCPeerConnection(servers);
-
-  // Add local stream to peer connection
-  localStream.getTracks().forEach((track) => {
-    peerConnection.addTrack(track, localStream);
-  });
-
-  // Handle remote stream
-  peerConnection.ontrack = (event) => {
-    remoteVideo.srcObject = event.streams[0];
-  };
-
-  // Handle ICE candidates
-  peerConnection.onicecandidate = (event) => {
-    if (event.candidate) {
-      db.collection('calls').doc('callee').set({ iceCandidate: event.candidate }, { merge: true });
+        // ✅ Draw received data
+        db.ref('drawings').on('child_added', (snapshot) => {
+            const { x, y, color } = snapshot.val();
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(x * canvas.width, y * canvas.height, 10, 0, 2 * Math.PI);
+            ctx.fill();
+        });
+    } else {
+        console.error('Firebase SDK not loaded');
     }
-  };
-}
-
-// Handle color selection
-document.querySelectorAll('.colors button').forEach((button) => {
-  button.addEventListener('click', () => {
-    selectedColor = button.getAttribute('data-color');
-  });
 });
-
-// Handle mouse clicks to throw colors
-canvas.addEventListener('click', (event) => {
-  const rect = canvas.getBoundingClientRect();
-  const x = event.clientX - rect.left;
-  const y = event.clientY - rect.top;
-
-  // Draw color locally
-  drawColor(x, y, selectedColor);
-
-  // Send color data to the remote peer
-  if (peerConnection) {
-    const data = { x, y, color: selectedColor };
-    peerConnection.getSenders()[0].send(JSON.stringify(data));
-  }
-});
-
-// Function to draw color on the canvas
-function drawColor(x, y, color) {
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.arc(x, y, 20, 0, 2 * Math.PI); // Circle radius: 20px
-  ctx.fill();
-}
-
-// Start the app
-startCamera();
-createPeerConnection();
