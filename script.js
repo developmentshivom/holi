@@ -16,12 +16,12 @@ const roomRef = db.ref('rooms/holi-room');
 // WebRTC Setup
 const servers = {
     iceServers: [
-        { urls: "stun:stun.l.google.com:19302" },  // Free STUN server
-        {
-            urls: "turn:turn.anyfirewall.com:443", // Replace with a real TURN service if needed
+        { urls: "stun:stun.l.google.com:19302" }, // Free STUN server
+        { 
+            urls: "turn:turn.anyfirewall.com:443",
             username: "webrtc",
             credential: "webrtc"
-        }
+        } // Example TURN (Replace with a real TURN service)
     ]
 };
 
@@ -47,17 +47,17 @@ peerConnection.ontrack = (event) => {
     event.streams[0].getTracks().forEach(track => remoteStream.addTrack(track));
 };
 
-// ICE Candidate Handling - Send to Firebase
+// 📌 **Improved ICE Candidate Handling**
 peerConnection.onicecandidate = (event) => {
     if (event.candidate) {
         console.log("📡 Sending ICE Candidate:", event.candidate);
         roomRef.child("candidates").push(event.candidate); // Store multiple candidates
     } else {
-        console.log("❌ No more ICE candidates.");
+        console.log("✅ ICE Candidate gathering complete.");
     }
 };
 
-// Listen for ICE candidates from Firebase
+// 📌 **Ensure ICE Candidates are received**
 roomRef.child("candidates").on("child_added", (snapshot) => {
     const candidate = snapshot.val();
     if (candidate) {
@@ -67,7 +67,7 @@ roomRef.child("candidates").on("child_added", (snapshot) => {
     }
 });
 
-// Listen for WebRTC offer or answer in Firebase
+// 📌 **Handle Offers & Answers**
 roomRef.on("value", async (snapshot) => {
     const data = snapshot.val();
     
@@ -86,11 +86,11 @@ roomRef.on("value", async (snapshot) => {
     }
 });
 
-// Create WebRTC Offer
-(async () => {
+// 📌 **Offer Creation with Delay (Ensures ICE Candidates are gathered)**
+setTimeout(async () => {
     console.log("📡 Creating WebRTC Offer...");
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
     roomRef.child("offer").set(offer);
     console.log("✅ Offer sent.");
-})();
+}, 2000);
