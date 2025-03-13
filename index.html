@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Firebase WebRTC</title>
 
-    <!-- ✅ Correct Firebase SDK Loading -->
+    <!-- ✅ Load Firebase SDK properly -->
     <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
     <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js"></script>
 
@@ -16,7 +16,6 @@
     <script>
         // ✅ Ensure Firebase loads correctly
         document.addEventListener("DOMContentLoaded", function () {
-            // ✅ Check if Firebase is available
             if (typeof firebase === "undefined") {
                 console.error("❌ Firebase SDK not loaded!");
                 return;
