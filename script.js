@@ -1,49 +1,76 @@
-document.addEventListener('DOMContentLoaded', function () {
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-    const video = document.getElementById('video');
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+const firebaseConfig = {
+    apiKey: "AIzaSyD9geqCCQlvh725M5aV22hYWUNa2YU6qYM",
+    authDomain: "virtual-holi-game.firebaseapp.com",
+    databaseURL: "https://virtual-holi-game-default-rtdb.firebaseio.com",
+    projectId: "virtual-holi-game",
+    storageBucket: "virtual-holi-game.firebasestorage.app",
+    messagingSenderId: "348578981043",
+    appId: "1:348578981043:web:78126b6e1605efab6afcc6",
+    measurementId: "G-9B3T81ZSR8"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
 
-    // ✅ Ensure Firebase is loaded before initializing
-    if (typeof firebase !== 'undefined') {
-        const firebaseConfig = {
-            apiKey: "AIzaSyD9geqCCQlvh725M5aV22hYWUNa2YU6qYM",
-            authDomain: "virtual-holi-game.firebaseapp.com",
-            databaseURL: "https://virtual-holi-game-default-rtdb.firebaseio.com",
-            projectId: "virtual-holi-game",
-            storageBucket: "virtual-holi-game.firebasestorage.app",
-            messagingSenderId: "348578981043",
-            appId: "1:348578981043:web:78126b6e1605efab6afcc6",
-            measurementId: "G-9B3T81ZSR8"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
+// WebRTC setup
+const servers = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+let peerConnection = new RTCPeerConnection(servers);
+let localStream;
 
-        // ✅ Get webcam feed
-        navigator.mediaDevices.getUserMedia({ video: true, audio: false })
-            .then((stream) => { video.srcObject = stream; })
-            .catch((error) => console.error('Error accessing webcam:', error));
+// Get video stream
+navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+    .then((stream) => {
+        document.getElementById('localVideo').srcObject = stream;
+        localStream = stream;
+        stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
+    });
 
-        // ✅ Handle click to draw
-        canvas.addEventListener('click', (e) => {
-            const x = e.clientX / canvas.width;
-            const y = e.clientY / canvas.height;
-            const color = '#' + Math.floor(Math.random() * 16777215).toString(16);
+// Listen for remote stream
+peerConnection.ontrack = (event) => {
+    document.getElementById('remoteVideo').srcObject = event.streams[0];
+};
 
-            // ✅ Send drawing data to Firebase
-            db.ref('drawings').push({ x, y, color });
-        });
-
-        // ✅ Draw received data
-        db.ref('drawings').on('child_added', (snapshot) => {
-            const { x, y, color } = snapshot.val();
-            ctx.fillStyle = color;
-            ctx.beginPath();
-            ctx.arc(x * canvas.width, y * canvas.height, 10, 0, 2 * Math.PI);
-            ctx.fill();
-        });
-    } else {
-        console.error('Firebase SDK not loaded');
+// Firebase signaling
+const roomRef = db.ref('rooms/holi-room');
+roomRef.on('value', async (snapshot) => {
+    const data = snapshot.val();
+    if (data?.offer && !peerConnection.remoteDescription) {
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
+        const answer = await peerConnection.createAnswer();
+        await peerConnection.setLocalDescription(answer);
+        roomRef.update({ answer });
+    }
+    if (data?.answer && peerConnection.signalingState === 'have-local-offer') {
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
     }
 });
+
+// Offer creation
+(async () => {
+    const offer = await peerConnection.createOffer();
+    await peerConnection.setLocalDescription(offer);
+    roomRef.set({ offer });
+})();
+
+// Color throwing functionality
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+canvas.addEventListener('click', (e) => {
+    const x = e.clientX / canvas.width;
+    const y = e.clientY / canvas.height;
+    const color = '#' + Math.floor(Math.random()*16777215).toString(16);
+    db.ref('colors').push({ x, y, color });
+});
+
+db.ref('colors').on('child_added', (snapshot) => {
+    const { x, y, color } = snapshot.val();
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(x * canvas.width, y * canvas.height, 20, 0, 2 * Math.PI);
+    ctx.fill();
+});
+
+// Generate invite link
+document.getElementById('link').innerText = window.location.href;
