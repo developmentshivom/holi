@@ -1,103 +1,97 @@
-import { db, ref, set, onValue, child, push } from "./firebase.js";
+// 🔥 Initialize Firebase
+const firebaseConfig = {
+    apiKey: "AIzaSyD9geqCCQlvh725M5aV22hYWUNa2YU6qYM",
+    authDomain: "virtual-holi-game.firebaseapp.com",
+    databaseURL: "https://virtual-holi-game-default-rtdb.firebaseio.com",
+    projectId: "virtual-holi-game",
+    storageBucket: "virtual-holi-game.appspot.com",
+    messagingSenderId: "348578981043",
+    appId: "1:348578981043:web:78126b6e1605efab6afcc6",
+    measurementId: "G-9B3T81ZSR8"
+};
 
-let peerConnection;
-const config = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
-const roomRef = ref(db, "rooms/holi-room");
-let localStream;
+firebase.initializeApp(firebaseConfig);
+const database = firebase.database();
+const roomRef = database.ref("webrtc-room");
 
-// 📡 Get local media
-async function getLocalMedia() {
+// 🎥 Video Elements
+const localVideo = document.getElementById("localVideo");
+const remoteVideo = document.getElementById("remoteVideo");
+
+// 📡 WebRTC Setup
+const peerConnection = new RTCPeerConnection({
+    iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+});
+
+// 🎤 Get User Media
+async function startLocalStream() {
     try {
-        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        document.getElementById("localVideo").srcObject = localStream;
-        console.log("✅ Local media acquired.");
-    } catch (err) {
-        console.error("❌ Error getting local media:", err);
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        localVideo.srcObject = stream;
+        stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
+        console.log("✅ Local stream added.");
+    } catch (error) {
+        console.error("❌ Error accessing media devices.", error);
     }
 }
 
-// 📡 Create WebRTC Offer
-async function createOffer() {
-    peerConnection = new RTCPeerConnection(config);
-    setupPeerConnection();
+// 🔄 Handle Remote Stream
+peerConnection.ontrack = (event) => {
+    remoteVideo.srcObject = event.streams[0];
+    console.log("📡 Remote stream received!");
+};
 
-    localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+// 📡 ICE Candidate Handling
+peerConnection.onicecandidate = (event) => {
+    if (event.candidate) {
+        database.ref("webrtc-room/candidates").push(JSON.stringify(event.candidate));
+        console.log("📡 ICE Candidate sent:", event.candidate);
+    }
+};
 
+// 🚀 Start Call (Creates Offer)
+document.getElementById("startCall").addEventListener("click", async () => {
+    await startLocalStream();
+    
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
+    database.ref("webrtc-room/offer").set(JSON.stringify(offer));
 
-    console.log("📡 Creating WebRTC Offer...");
-    await set(roomRef, { offer: offer });
+    console.log("📡 Offer created and sent.");
+});
 
-    console.log("✅ Offer sent.");
-}
+// 🎯 Join Call (Responds with Answer)
+document.getElementById("joinCall").addEventListener("click", async () => {
+    await startLocalStream();
 
-// 📡 Handle incoming offer & create answer
-async function handleOffer(snapshot) {
-    if (!snapshot.exists()) return;
+    database.ref("webrtc-room/offer").once("value", async (snapshot) => {
+        if (snapshot.exists()) {
+            const offer = JSON.parse(snapshot.val());
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+            console.log("📡 Offer received.");
 
-    const data = snapshot.val();
-    if (!data.offer) return;
-
-    console.log("📡 Offer received, creating answer...");
-    peerConnection = new RTCPeerConnection(config);
-    setupPeerConnection();
-
-    localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-
-    await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
-
-    const answer = await peerConnection.createAnswer();
-    await peerConnection.setLocalDescription(answer);
-
-    console.log("✅ Answer sent.");
-    await set(child(roomRef, "answer"), answer);
-}
-
-// 📡 Handle incoming answer
-async function handleAnswer(snapshot) {
-    if (!snapshot.exists()) return;
-
-    const data = snapshot.val();
-    if (!data) return;
-
-    console.log("📡 Answer received, setting remote description...");
-    if (peerConnection.signalingState === "have-local-offer") {
-        await peerConnection.setRemoteDescription(new RTCSessionDescription(data));
-    }
-}
-
-// 📡 Handle ICE candidates
-async function handleICECandidate(snapshot) {
-    if (!snapshot.exists()) return;
-
-    const data = snapshot.val();
-    if (!data.candidate) return;
-
-    console.log("📡 ICE Candidate received:", data.candidate);
-    await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
-}
-
-// 📡 Setup WebRTC connection
-function setupPeerConnection() {
-    peerConnection.onicecandidate = event => {
-        if (event.candidate) {
-            console.log("📡 Sending ICE Candidate:", event.candidate);
-            push(child(roomRef, "candidates"), { candidate: event.candidate });
+            const answer = await peerConnection.createAnswer();
+            await peerConnection.setLocalDescription(answer);
+            database.ref("webrtc-room/answer").set(JSON.stringify(answer));
+            console.log("✅ Answer created and sent.");
         }
-    };
+    });
+});
 
-    peerConnection.ontrack = event => {
-        document.getElementById("remoteVideo").srcObject = event.streams[0];
-        console.log("📡 Remote track received!");
-    };
-}
+// 📡 Listen for Answer
+database.ref("webrtc-room/answer").on("value", (snapshot) => {
+    if (snapshot.exists()) {
+        const answer = JSON.parse(snapshot.val());
+        peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+        console.log("✅ Answer received and applied.");
+    }
+});
 
-// 🔄 Firebase listeners for signaling
-onValue(roomRef, handleOffer);
-onValue(child(roomRef, "answer"), handleAnswer);
-onValue(child(roomRef, "candidates"), handleICECandidate);
-
-// 🚀 Start WebRTC connection
-getLocalMedia();
-document.getElementById("startButton").addEventListener("click", createOffer);
+// 📡 Listen for ICE Candidates
+database.ref("webrtc-room/candidates").on("child_added", (snapshot) => {
+    if (snapshot.exists()) {
+        const candidate = JSON.parse(snapshot.val());
+        peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+        console.log("📡 ICE Candidate received and added.");
+    }
+});
