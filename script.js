@@ -1,116 +1,113 @@
-// Firebase Config
+// Firebase setup
 const firebaseConfig = {
-    apiKey: "AIzaSyD9geqCCQlvh725M5aV22hYWUNa2YU6qYM",
-    authDomain: "virtual-holi-game.firebaseapp.com",
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
     databaseURL: "https://virtual-holi-game-default-rtdb.firebaseio.com",
-    projectId: "virtual-holi-game",
-    storageBucket: "virtual-holi-game.appspot.com",
-    messagingSenderId: "348578981043",
-    appId: "1:348578981043:web:78126b6e1605efab6afcc6",
-    measurementId: "G-9B3T81ZSR8"
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT.appspot.com",
+    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+    appId: "YOUR_APP_ID"
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
-const roomRef = db.ref('rooms/holi-room');
 
-// WebRTC Setup
-const servers = {
-    iceServers: [
-        { urls: "stun:stun.l.google.com:19302" }, // Free STUN server
-        { 
-            urls: "turn:turn.anyfirewall.com:443",
-            username: "webrtc",
-            credential: "webrtc"
-        } // Example TURN (Replace with a real TURN service)
-    ]
-};
+// WebRTC setup
+let peerConnection;
+const config = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+const roomRef = db.ref("rooms/holi-room");
+let localStream;
 
-let peerConnection = new RTCPeerConnection(servers);
-let localStream, remoteStream = new MediaStream();
-
-// Assign remote stream to video element
-document.getElementById('remoteVideo').srcObject = remoteStream;
-
-// Get user media
-navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-    .then((stream) => {
+// 📡 Get local media
+async function getLocalMedia() {
+    try {
+        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        document.getElementById("localVideo").srcObject = localStream;
         console.log("✅ Local stream acquired.");
-        document.getElementById('localVideo').srcObject = stream;
-        localStream = stream;
-        stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
-    })
-    .catch(error => console.error("❌ Error accessing media devices:", error));
-
-// Ensure remote user connects
-peerConnection.ontrack = (event) => {
-    console.log("📡 Remote track received!");
-    event.streams[0].getTracks().forEach(track => remoteStream.addTrack(track));
-};
-
-// 📌 **ICE Candidate Handling**
-peerConnection.onicecandidate = (event) => {
-    if (event.candidate) {
-        console.log("📡 Sending ICE Candidate:", event.candidate);
-        roomRef.child("candidates").push(event.candidate); // Store multiple candidates
-    } else {
-        console.log("✅ ICE Candidate gathering complete.");
+    } catch (err) {
+        console.error("❌ Error getting local media:", err);
     }
-};
+}
 
-// 📌 **Receive ICE Candidates**
-roomRef.child("candidates").on("child_added", (snapshot) => {
-    const candidate = snapshot.val();
-    if (candidate) {
-        console.log("✅ Received ICE Candidate:", candidate);
-        peerConnection.addIceCandidate(new RTCIceCandidate(candidate))
-            .catch(error => console.error("❌ Failed to add ICE Candidate:", error));
-    }
-});
+// 📡 Create WebRTC Offer
+async function createOffer() {
+    peerConnection = new RTCPeerConnection(config);
+    setupPeerConnection();
 
-// 📌 **Handle Offers & Answers**
-roomRef.on("value", async (snapshot) => {
-    const data = snapshot.val();
-    
-    if (data?.offer && !peerConnection.remoteDescription) {
-        console.log("📡 Offer found, creating answer...");
-        await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
-        
-        // 🛠 Fix: Force correct SDP order before answering
-        let answer = await peerConnection.createAnswer();
-        answer.sdp = fixSDPOrder(answer.sdp, data.offer.sdp); 
-        
-        await peerConnection.setLocalDescription(answer);
-        roomRef.child("answer").set(answer);
-        console.log("✅ Answer sent.");
-    }
+    localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
 
-    if (data?.answer && peerConnection.signalingState === 'have-local-offer') {
-        console.log("📡 Answer received, setting remote description...");
-        await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
-    }
-});
-
-// 📌 **Offer Creation with Delay (Ensures ICE Candidates are gathered)**
-setTimeout(async () => {
-    console.log("📡 Creating WebRTC Offer...");
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
-    roomRef.child("offer").set(offer);
+
+    console.log("📡 Creating WebRTC Offer...", offer);
+    await roomRef.set({ offer: offer });
+
     console.log("✅ Offer sent.");
-}, 2000);
-
-// 📌 **🛠 Fix Function: Force Correct SDP Order**
-function fixSDPOrder(answerSDP, offerSDP) {
-    const offerLines = offerSDP.split("\n");
-    const answerLines = answerSDP.split("\n");
-
-    let orderedAnswer = [];
-    offerLines.forEach(offerLine => {
-        if (offerLine.startsWith("m=")) {
-            const matchingAnswerLine = answerLines.find(line => line.startsWith(offerLine));
-            if (matchingAnswerLine) orderedAnswer.push(matchingAnswerLine);
-        }
-    });
-
-    return orderedAnswer.join("\n");
 }
+
+// 📡 Handle incoming offer & create answer
+async function handleOffer(snapshot) {
+    if (!snapshot.exists()) return;
+
+    const { offer } = snapshot.val();
+    if (!offer) return;
+
+    console.log("📡 Offer found, creating answer...");
+    peerConnection = new RTCPeerConnection(config);
+    setupPeerConnection();
+
+    localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+    await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+
+    const answer = await peerConnection.createAnswer();
+    await peerConnection.setLocalDescription(answer);
+
+    console.log("✅ Answer sent.");
+    await roomRef.update({ answer: answer });
+}
+
+// 📡 Handle incoming answer
+async function handleAnswer(snapshot) {
+    if (!snapshot.exists()) return;
+
+    const { answer } = snapshot.val();
+    if (!answer) return;
+
+    console.log("📡 Answer received, setting remote description...");
+    await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+}
+
+// 📡 Handle ICE candidates
+async function handleICECandidate(snapshot) {
+    if (!snapshot.exists()) return;
+
+    const { candidate } = snapshot.val();
+    if (!candidate) return;
+
+    console.log("📡 ICE Candidate received:", candidate);
+    await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+}
+
+// 📡 Setup WebRTC connection
+function setupPeerConnection() {
+    peerConnection.onicecandidate = event => {
+        if (event.candidate) {
+            console.log("📡 Sending ICE Candidate:", event.candidate);
+            db.ref(`rooms/holi-room/candidates`).push({ candidate: event.candidate });
+        }
+    };
+
+    peerConnection.ontrack = event => {
+        document.getElementById("remoteVideo").srcObject = event.streams[0];
+        console.log("📡 Remote track received!");
+    };
+}
+
+// 🔄 Firebase listeners for signaling
+roomRef.on("value", handleOffer);
+roomRef.child("answer").on("value", handleAnswer);
+roomRef.child("candidates").on("child_added", handleICECandidate);
+
+// 🚀 Start WebRTC connection
+getLocalMedia();
+document.getElementById("startButton").addEventListener("click", createOffer);
