@@ -8,8 +8,14 @@ const firebaseConfig = {
     appId: "1:348578981043:web:78126b6e1605efab6afcc6"
 };
 
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+// Ensure Firebase is available globally before using it
+if (typeof firebase === "undefined") {
+    console.error("Firebase is not loaded. Check script order.");
+} else {
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+}
+
 
 // WebRTC Configuration
 const servers = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
