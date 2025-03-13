@@ -1,4 +1,4 @@
-// Initialize Firebase
+// ✅ Firebase Config (Replace with your Firebase keys)
 const firebaseConfig = {
     apiKey: "AIzaSyD9geqCCQlvh725M5aV22hYWUNa2YU6qYM",
     authDomain: "virtual-holi-game.firebaseapp.com",
@@ -9,30 +9,29 @@ const firebaseConfig = {
     appId: "1:348578981043:web:78126b6e1605efab6afcc6",
     measurementId: "G-9B3T81ZSR8"
 };
-
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// WebRTC setup
+// ✅ WebRTC Setup
 const servers = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 let peerConnection = new RTCPeerConnection(servers);
 let localStream;
 
-// Get video stream
+// ✅ Get local video/audio
 navigator.mediaDevices.getUserMedia({ video: true, audio: true })
     .then((stream) => {
         document.getElementById('localVideo').srcObject = stream;
         localStream = stream;
         stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
     })
-    .catch(error => console.error("Error accessing camera/mic:", error));
+    .catch(error => console.error("Error accessing camera/microphone:", error));
 
-// Listen for remote stream
+// ✅ Listen for remote stream
 peerConnection.ontrack = (event) => {
     document.getElementById('remoteVideo').srcObject = event.streams[0];
 };
 
-// Firebase signaling
+// ✅ Firebase Signaling
 const roomRef = db.ref('rooms/holi-room');
 roomRef.on('value', async (snapshot) => {
     const data = snapshot.val();
@@ -47,19 +46,20 @@ roomRef.on('value', async (snapshot) => {
     }
 });
 
-// Offer creation
+// ✅ Create WebRTC Offer
 (async () => {
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
     roomRef.set({ offer });
 })();
 
-// Color throwing functionality
+// ✅ Canvas for Color Throwing
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
+// ✅ Throw color on click
 canvas.addEventListener('click', (e) => {
     const x = e.clientX / canvas.width;
     const y = e.clientY / canvas.height;
@@ -67,6 +67,7 @@ canvas.addEventListener('click', (e) => {
     db.ref('colors').push({ x, y, color });
 });
 
+// ✅ Listen for color events
 db.ref('colors').on('child_added', (snapshot) => {
     const { x, y, color } = snapshot.val();
     ctx.fillStyle = color;
@@ -75,5 +76,5 @@ db.ref('colors').on('child_added', (snapshot) => {
     ctx.fill();
 });
 
-// Generate invite link
+// ✅ Generate Invite Link
 document.getElementById('link').innerText = window.location.href;
