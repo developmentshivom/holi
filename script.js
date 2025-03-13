@@ -1,24 +1,29 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+
 // Firebase Config
 const firebaseConfig = {
-    apiKey: "AIzaSyD9geqCCQ...",
+    apiKey: "AIzaSyD9geqCCQlvh725M5aV22hYWUNa2YU6qYM",
     authDomain: "virtual-holi-game.firebaseapp.com",
     databaseURL: "https://virtual-holi-game-default-rtdb.firebaseio.com",
     projectId: "virtual-holi-game",
     storageBucket: "virtual-holi-game.appspot.com",
     messagingSenderId: "348578981043",
-    appId: "1:348578981043:web:78126b6e1605efab6afcc6"
+    appId: "1:348578981043:web:78126b6e1605efab6afcc6",
+    measurementId: "G-9B3T81ZSR8"
 };
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const roomRef = ref(db, 'rooms/holi-room');
 
-// Initialize Firebase
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
-
-// WebRTC Configuration
+// WebRTC Setup
 const servers = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 let peerConnection = new RTCPeerConnection(servers);
-let localStream;
+let localStream, remoteStream = new MediaStream();
 
-// Get Media (Camera + Audio)
+document.getElementById('remoteVideo').srcObject = remoteStream; // Assign remote stream
+
+// Get user media
 navigator.mediaDevices.getUserMedia({ video: true, audio: true })
     .then((stream) => {
         document.getElementById('localVideo').srcObject = stream;
@@ -26,72 +31,44 @@ navigator.mediaDevices.getUserMedia({ video: true, audio: true })
         stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
     });
 
-// Handle Remote Stream
+// Ensure remote user connects
 peerConnection.ontrack = (event) => {
-    if (!document.getElementById('remoteVideo').srcObject) {
-        document.getElementById('remoteVideo').srcObject = event.streams[0];
+    console.log("Remote track received!");
+    event.streams[0].getTracks().forEach(track => remoteStream.addTrack(track));
+};
+
+// ICE Candidate Handling
+peerConnection.onicecandidate = (event) => {
+    if (event.candidate) {
+        set(ref(db, `rooms/holi-room/candidate`), event.candidate);
     }
 };
 
+// Listen for ICE candidates from Firebase
+onValue(ref(db, 'rooms/holi-room/candidate'), (snapshot) => {
+    const candidate = snapshot.val();
+    if (candidate) {
+        peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+    }
+});
 
-
-// Firebase Signaling (Real-time Room)
-const roomRef = db.ref('rooms/holi-room');
-roomRef.on('value', async (snapshot) => {
+// Listen for offer
+onValue(roomRef, async (snapshot) => {
     const data = snapshot.val();
     if (data?.offer && !peerConnection.remoteDescription) {
         await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
         const answer = await peerConnection.createAnswer();
         await peerConnection.setLocalDescription(answer);
-        roomRef.set({ answer });
+        set(roomRef, { answer });
     }
     if (data?.answer && peerConnection.signalingState === 'have-local-offer') {
         await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
     }
 });
 
-// Create Offer (Only if needed)
+// Offer creation
 (async () => {
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
-    roomRef.set({ offer });
+    set(roomRef, { offer });
 })();
-
-// 🎨 Color Throwing Feature (Canvas Interaction)
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
-
-// Click to "Throw" Color
-canvas.addEventListener('click', (e) => {
-    const x = e.clientX / canvas.width;
-    const y = e.clientY / canvas.height;
-    const color = '#' + Math.floor(Math.random()*16777215).toString(16);
-
-    db.ref('colors/' + Date.now()).set({ x, y, color });
-});
-
-peerConnection.oniceconnectionstatechange = () => {
-    if (peerConnection.iceConnectionState === 'failed') {
-        console.log("ICE Connection Failed. Retrying...");
-        peerConnection.restartIce();
-    }
-};
-
-
-
-// Sync Colors Across Users
-db.ref('colors').on('value', (snapshot) => {
-    snapshot.forEach(child => {
-        const { x, y, color } = child.val();
-        ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.arc(x * canvas.width, y * canvas.height, 20, 0, 2 * Math.PI);
-        ctx.fill();
-    });
-});
-
-// Generate Shareable Link
-document.getElementById('link').innerText = window.location.href;
-document.getElementById('link').href = window.location.href;
