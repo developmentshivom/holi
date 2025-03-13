@@ -1,17 +1,17 @@
 const firebaseConfig = {
-    apiKey: "AIzaSyD9geqCCQlvh725M5aV22hYWUNa2YU6qYM",
+    apiKey: "AIzaSyD9geqCCQ...",
     authDomain: "virtual-holi-game.firebaseapp.com",
     databaseURL: "https://virtual-holi-game-default-rtdb.firebaseio.com",
     projectId: "virtual-holi-game",
-    storageBucket: "virtual-holi-game.firebasestorage.app",
+    storageBucket: "virtual-holi-game.appspot.com",
     messagingSenderId: "348578981043",
-    appId: "1:348578981043:web:78126b6e1605efab6afcc6",
-    measurementId: "G-9B3T81ZSR8"
+    appId: "1:348578981043:web:78126b6e1605efab6afcc6"
 };
+
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// WebRTC setup
+// WebRTC Configuration
 const servers = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 let peerConnection = new RTCPeerConnection(servers);
 let localStream;
@@ -22,14 +22,15 @@ navigator.mediaDevices.getUserMedia({ video: true, audio: true })
         document.getElementById('localVideo').srcObject = stream;
         localStream = stream;
         stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
-    });
+    })
+    .catch(err => console.error("Error accessing webcam:", err));
 
-// Listen for remote stream
+// Remote video setup
 peerConnection.ontrack = (event) => {
     document.getElementById('remoteVideo').srcObject = event.streams[0];
 };
 
-// Firebase signaling
+// Firebase signaling (Creating or Joining a Room)
 const roomRef = db.ref('rooms/holi-room');
 roomRef.on('value', async (snapshot) => {
     const data = snapshot.val();
@@ -51,7 +52,7 @@ roomRef.on('value', async (snapshot) => {
     roomRef.set({ offer });
 })();
 
-// Color throwing functionality
+// Color Throwing Canvas
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 canvas.width = window.innerWidth;
@@ -64,6 +65,7 @@ canvas.addEventListener('click', (e) => {
     db.ref('colors').push({ x, y, color });
 });
 
+// Sync colors over Firebase
 db.ref('colors').on('child_added', (snapshot) => {
     const { x, y, color } = snapshot.val();
     ctx.fillStyle = color;
@@ -74,3 +76,4 @@ db.ref('colors').on('child_added', (snapshot) => {
 
 // Generate invite link
 document.getElementById('link').innerText = window.location.href;
+document.getElementById('link').href = window.location.href;
