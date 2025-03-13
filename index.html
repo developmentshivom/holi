@@ -12,23 +12,68 @@
     <!-- WebRTC Adapter -->
     <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
 
-    <!-- External Styles -->
+    <!-- Styles -->
     <style>
-        body { margin: 0; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; background: url('holi-bg.jpg') no-repeat center center/cover; }
-        video { position: absolute; width: 45%; height: 45%; object-fit: cover; border: 5px solid white; border-radius: 10px; }
+        body {
+            margin: 0;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: url('holi-bg.jpg') no-repeat center center/cover;
+        }
+        video {
+            position: absolute;
+            width: 45%;
+            height: 45%;
+            object-fit: cover;
+            border: 5px solid white;
+            border-radius: 10px;
+        }
         #remoteVideo { top: 10px; right: 10px; }
         #localVideo { bottom: 10px; left: 10px; }
-        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: auto; }
-        #inviteLink { position: absolute; top: 20px; left: 20px; background: rgba(255,255,255,0.8); padding: 10px; border-radius: 5px; }
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: auto;
+        }
+        #inviteLink {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255,255,255,0.8);
+            padding: 10px;
+            border-radius: 5px;
+        }
     </style>
 </head>
 <body>
+
+    <!-- Invite Link for Sharing -->
     <div id="inviteLink">Share this link: <a id="link" target="_blank"></a></div>
+
+    <!-- Local and Remote Video Feeds -->
     <video id="localVideo" autoplay playsinline muted></video>
     <video id="remoteVideo" autoplay playsinline></video>
+
+    <!-- Canvas for Throwing Colors -->
     <canvas id="canvas"></canvas>
 
     <!-- WebRTC + Firebase Logic -->
     <script src="script.js"></script>
+    
+    <script>
+        // Automatically initialize WebRTC on page load
+        window.onload = () => {
+            initWebRTC();
+            initCanvas();
+            generateInviteLink();
+        };
+    </script>
+
 </body>
 </html>
