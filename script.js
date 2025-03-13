@@ -48,6 +48,16 @@ roomRef.child("candidate").on("value", (snapshot) => {
         peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
     }
 });
+const peerConnection = new RTCPeerConnection({
+  iceServers: [
+    { urls: "stun:stun.l.google.com:19302" },  // Free STUN
+    {
+      urls: "turn:turn.anyfirewall.com:443",
+      username: "webrtc",
+      credential: "webrtc"
+    } // Example TURN (Replace with a real TURN service)
+  ]
+});
 
 // Listen for offer
 roomRef.on("value", async (snapshot) => {
