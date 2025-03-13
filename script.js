@@ -13,69 +13,76 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 const roomRef = db.ref('rooms/holi-room');
 
-// WebRTC Setup
-const servers = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
-let peerConnection = new RTCPeerConnection(servers);
-let localStream, remoteStream = new MediaStream();
+// WebRTC Setup (Single Definition)
+const peerConnection = new RTCPeerConnection({
+    iceServers: [
+        { urls: "stun:stun.l.google.com:19302" },  // Free STUN
+        {
+            urls: "turn:turn.anyfirewall.com:443",
+            username: "webrtc",
+            credential: "webrtc"
+        } // Example TURN (Replace with a real TURN service)
+    ]
+});
 
-document.getElementById('remoteVideo').srcObject = remoteStream; // Assign remote stream
+let localStream, remoteStream;
 
-// Get user media
+// Get local media (camera & mic)
 navigator.mediaDevices.getUserMedia({ video: true, audio: true })
     .then((stream) => {
         document.getElementById('localVideo').srcObject = stream;
         localStream = stream;
         stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
-    });
+    })
+    .catch(error => console.error("Error getting user media:", error));
 
 // Ensure remote user connects
 peerConnection.ontrack = (event) => {
     console.log("Remote track received!");
-    event.streams[0].getTracks().forEach(track => remoteStream.addTrack(track));
+    if (!remoteStream) {
+        remoteStream = event.streams[0];
+        document.getElementById('remoteVideo').srcObject = remoteStream;
+    }
 };
 
-// ICE Candidate Handling
+// ICE Candidate Handling (Push multiple candidates)
 peerConnection.onicecandidate = (event) => {
     if (event.candidate) {
-        roomRef.child("candidate").set(event.candidate);
+        roomRef.child("candidates").push(event.candidate);  // Use .push() instead of .set()
     }
 };
 
 // Listen for ICE candidates from Firebase
-roomRef.child("candidate").on("value", (snapshot) => {
+roomRef.child("candidates").on("child_added", (snapshot) => {
     const candidate = snapshot.val();
     if (candidate) {
         peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
     }
 });
-const peerConnection = new RTCPeerConnection({
-  iceServers: [
-    { urls: "stun:stun.l.google.com:19302" },  // Free STUN
-    {
-      urls: "turn:turn.anyfirewall.com:443",
-      username: "webrtc",
-      credential: "webrtc"
-    } // Example TURN (Replace with a real TURN service)
-  ]
-});
 
-// Listen for offer
-roomRef.on("value", async (snapshot) => {
+// Check for existing offer or create one
+roomRef.once("value", async (snapshot) => {
     const data = snapshot.val();
-    if (data?.offer && !peerConnection.remoteDescription) {
+    if (data?.offer) {
+        // If an offer exists, join as the second user
+        console.log("Offer found, creating answer...");
         await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
         const answer = await peerConnection.createAnswer();
         await peerConnection.setLocalDescription(answer);
         roomRef.child("answer").set(answer);
-    }
-    if (data?.answer && peerConnection.signalingState === 'have-local-offer') {
-        await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
+    } else {
+        // No offer exists, create one
+        console.log("No offer found, creating one...");
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+        roomRef.child("offer").set(offer);
     }
 });
 
-// Offer creation
-(async () => {
-    const offer = await peerConnection.createOffer();
-    await peerConnection.setLocalDescription(offer);
-    roomRef.child("offer").set(offer);
-})();
+// Listen for answer
+roomRef.child("answer").on("value", async (snapshot) => {
+    const answer = snapshot.val();
+    if (answer && peerConnection.signalingState === 'have-local-offer') {
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+    }
+});
