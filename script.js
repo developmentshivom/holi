@@ -1,6 +1,3 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
-
 // Firebase Config
 const firebaseConfig = {
     apiKey: "AIzaSyD9geqCCQlvh725M5aV22hYWUNa2YU6qYM",
@@ -12,9 +9,9 @@ const firebaseConfig = {
     appId: "1:348578981043:web:78126b6e1605efab6afcc6",
     measurementId: "G-9B3T81ZSR8"
 };
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-const roomRef = ref(db, 'rooms/holi-room');
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const roomRef = db.ref('rooms/holi-room');
 
 // WebRTC Setup
 const servers = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
@@ -40,12 +37,12 @@ peerConnection.ontrack = (event) => {
 // ICE Candidate Handling
 peerConnection.onicecandidate = (event) => {
     if (event.candidate) {
-        set(ref(db, `rooms/holi-room/candidate`), event.candidate);
+        roomRef.child("candidate").set(event.candidate);
     }
 };
 
 // Listen for ICE candidates from Firebase
-onValue(ref(db, 'rooms/holi-room/candidate'), (snapshot) => {
+roomRef.child("candidate").on("value", (snapshot) => {
     const candidate = snapshot.val();
     if (candidate) {
         peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
@@ -53,13 +50,13 @@ onValue(ref(db, 'rooms/holi-room/candidate'), (snapshot) => {
 });
 
 // Listen for offer
-onValue(roomRef, async (snapshot) => {
+roomRef.on("value", async (snapshot) => {
     const data = snapshot.val();
     if (data?.offer && !peerConnection.remoteDescription) {
         await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
         const answer = await peerConnection.createAnswer();
         await peerConnection.setLocalDescription(answer);
-        set(roomRef, { answer });
+        roomRef.child("answer").set(answer);
     }
     if (data?.answer && peerConnection.signalingState === 'have-local-offer') {
         await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
@@ -70,5 +67,5 @@ onValue(roomRef, async (snapshot) => {
 (async () => {
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
-    set(roomRef, { offer });
+    roomRef.child("offer").set(offer);
 })();
