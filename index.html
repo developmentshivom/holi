@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Firebase WebRTC</title>
-    
-    <!-- ✅ Load Firebase SDK from CDN (No import needed) -->
+
+    <!-- ✅ Correct Firebase SDK Loading -->
     <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
     <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js"></script>
 
@@ -13,10 +13,10 @@
 <body>
     <h1>Firebase WebRTC</h1>
 
-    <!-- ✅ Initialize Firebase -->
     <script>
-        // Wait until Firebase is fully loaded before initializing
-        document.addEventListener("DOMContentLoaded", function() {
+        // ✅ Ensure Firebase loads correctly
+        document.addEventListener("DOMContentLoaded", function () {
+            // ✅ Check if Firebase is available
             if (typeof firebase === "undefined") {
                 console.error("❌ Firebase SDK not loaded!");
                 return;
@@ -44,12 +44,12 @@
 
             console.log("🔥 Firebase Initialized Successfully!");
 
-            // ✅ Test: Write Data
+            // ✅ Test Writing Data
             database.ref("test").set({ message: "Hello, Firebase!" })
                 .then(() => console.log("✅ Data written successfully"))
                 .catch(error => console.error("❌ Error writing data:", error));
 
-            // ✅ Test: Read Data
+            // ✅ Test Reading Data
             database.ref("test").on("value", snapshot => {
                 console.log("📡 Data from Firebase:", snapshot.val());
             });
