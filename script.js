@@ -47,7 +47,7 @@ peerConnection.ontrack = (event) => {
     event.streams[0].getTracks().forEach(track => remoteStream.addTrack(track));
 };
 
-// 📌 **Improved ICE Candidate Handling**
+// 📌 **ICE Candidate Handling**
 peerConnection.onicecandidate = (event) => {
     if (event.candidate) {
         console.log("📡 Sending ICE Candidate:", event.candidate);
@@ -57,7 +57,7 @@ peerConnection.onicecandidate = (event) => {
     }
 };
 
-// 📌 **Ensure ICE Candidates are received**
+// 📌 **Receive ICE Candidates**
 roomRef.child("candidates").on("child_added", (snapshot) => {
     const candidate = snapshot.val();
     if (candidate) {
@@ -74,7 +74,11 @@ roomRef.on("value", async (snapshot) => {
     if (data?.offer && !peerConnection.remoteDescription) {
         console.log("📡 Offer found, creating answer...");
         await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
-        const answer = await peerConnection.createAnswer();
+        
+        // 🛠 Fix: Force correct SDP order before answering
+        let answer = await peerConnection.createAnswer();
+        answer.sdp = fixSDPOrder(answer.sdp, data.offer.sdp); 
+        
         await peerConnection.setLocalDescription(answer);
         roomRef.child("answer").set(answer);
         console.log("✅ Answer sent.");
@@ -94,3 +98,19 @@ setTimeout(async () => {
     roomRef.child("offer").set(offer);
     console.log("✅ Offer sent.");
 }, 2000);
+
+// 📌 **🛠 Fix Function: Force Correct SDP Order**
+function fixSDPOrder(answerSDP, offerSDP) {
+    const offerLines = offerSDP.split("\n");
+    const answerLines = answerSDP.split("\n");
+
+    let orderedAnswer = [];
+    offerLines.forEach(offerLine => {
+        if (offerLine.startsWith("m=")) {
+            const matchingAnswerLine = answerLines.find(line => line.startsWith(offerLine));
+            if (matchingAnswerLine) orderedAnswer.push(matchingAnswerLine);
+        }
+    });
+
+    return orderedAnswer.join("\n");
+}
