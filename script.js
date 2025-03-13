@@ -33,7 +33,7 @@ peerConnection.ontrack = (event) => {
     }
 };
 
-};
+
 
 // Firebase Signaling (Real-time Room)
 const roomRef = db.ref('rooms/holi-room');
