@@ -18,29 +18,6 @@ const servers = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 let peerConnection = new RTCPeerConnection(servers);
 let localStream;
 
-
-
-// Get the Clear Screen button
-const clearButton = document.getElementById('clearScreen');
-
-// Clear Canvas Function
-function clearCanvas() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-}
-
-// Click Event for Local Clear
-clearButton.addEventListener('click', () => {
-    db.ref('colors').remove(); // Remove all colors from Firebase
-    clearCanvas(); // Clear local canvas
-});
-
-// Sync Clear Across All Users
-db.ref('colors').on('value', (snapshot) => {
-    if (!snapshot.exists()) {
-        clearCanvas(); // Clear canvas when Firebase is cleared
-    }
-});
-
 // Get Media (Camera + Audio)
 navigator.mediaDevices.getUserMedia({ video: true, audio: true })
     .then((stream) => {
@@ -89,6 +66,28 @@ canvas.addEventListener('click', (e) => {
     const color = '#' + Math.floor(Math.random()*16777215).toString(16);
 
     db.ref('colors/' + Date.now()).set({ x, y, color });
+});
+
+
+// Get the Clear Screen button
+const clearButton = document.getElementById('clearScreen');
+
+// Clear Canvas Function
+function clearCanvas() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+// Click Event for Local Clear
+clearButton.addEventListener('click', () => {
+    db.ref('colors').remove(); // Remove all colors from Firebase
+    clearCanvas(); // Clear local canvas
+});
+
+// Sync Clear Across All Users
+db.ref('colors').on('value', (snapshot) => {
+    if (!snapshot.exists()) {
+        clearCanvas(); // Clear canvas when Firebase is cleared
+    }
 });
 
 // Sync Colors Across Users
