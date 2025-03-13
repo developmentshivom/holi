@@ -5,10 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WebRTC Holi App</title>
     <link rel="icon" type="image/x-icon" href="favicon.ico">
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
-    <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
-    <script src="script.js" defer></script>
+    
+    <!-- ✅ Firebase SDK (No Import Issues) -->
+    <script defer src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <script defer src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+
+    <!-- ✅ Defer Script Execution -->
+    <script defer src="script.js"></script>
+
     <style>
         body {
             margin: 0;
