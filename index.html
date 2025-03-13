@@ -1,102 +1,27 @@
+const htmlContent = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Virtual Holi</title>
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="https://unpkg.com/peerjs@1.3.1/dist/peerjs.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face-detection"></script>
+    <title>WebRTC Holi App</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
+    <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+    <script src="script.js" defer></script>
     <style>
-        body { text-align: center; font-family: Arial, sans-serif; }
-        video { width: 300px; height: 240px; border: 2px solid #ddd; margin: 5px; position: relative; }
-        .container { display: flex; flex-wrap: wrap; justify-content: center; }
-        .color-btns { margin: 10px; }
+        body { margin: 0; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; background: url('holi-bg.jpg') no-repeat center center/cover; }
+        video { position: absolute; width: 45%; height: 45%; object-fit: cover; border: 5px solid white; border-radius: 10px; }
+        #remoteVideo { top: 10px; right: 10px; }
+        #localVideo { bottom: 10px; left: 10px; }
+        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: auto; }
+        #inviteLink { position: absolute; top: 20px; left: 20px; background: rgba(255,255,255,0.8); padding: 10px; border-radius: 5px; }
     </style>
 </head>
 <body>
-    <h2>Virtual Holi - Play with Colors!</h2>
-    
-    <div class="color-btns">
-        <button onclick="setColor('red')">🔴 Red</button>
-        <button onclick="setColor('blue')">🔵 Blue</button>
-        <button onclick="setColor('yellow')">🟡 Yellow</button>
-    </div>
-
-    <div class="container" id="videoContainer"></div>
-
-    <script>
-        const socket = io();
-        const peer = new Peer();
-        let localStream;
-        let peers = {};
-        let selectedColor = "red";
-
-        navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-            .then((stream) => {
-                localStream = stream;
-                addVideoStream(peer.id, stream, true);
-
-                peer.on("open", (id) => {
-                    socket.emit("join-room", "holi-room", id);
-                });
-
-                peer.on("call", (call) => {
-                    call.answer(localStream);
-                    call.on("stream", (userStream) => {
-                        addVideoStream(call.peer, userStream, false);
-                    });
-                });
-
-                socket.on("user-joined", (userId) => {
-                    connectToNewUser(userId, stream);
-                });
-
-                socket.on("user-left", (userId) => {
-                    if (peers[userId]) peers[userId].close();
-                    document.getElementById(userId)?.remove();
-                });
-            })
-            .catch((error) => console.error("Error accessing media devices:", error));
-
-        function connectToNewUser(userId, stream) {
-            const call = peer.call(userId, stream);
-            call.on("stream", (userStream) => {
-                addVideoStream(userId, userStream, false);
-            });
-            peers[userId] = call;
-        }
-
-        function addVideoStream(id, stream, isSelf) {
-            const video = document.createElement("video");
-            video.srcObject = stream;
-            video.autoplay = true;
-            video.playsInline = true;
-            video.id = id;
-            video.addEventListener("click", () => applyColor(video));
-            document.getElementById("videoContainer").appendChild(video);
-        }
-
-        function setColor(color) {
-            selectedColor = color;
-        }
-
-        function applyColor(videoElement) {
-            const canvas = document.createElement("canvas");
-            const ctx = canvas.getContext("2d");
-            canvas.width = videoElement.videoWidth;
-            canvas.height = videoElement.videoHeight;
-            ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
-
-            ctx.fillStyle = selectedColor;
-            ctx.globalAlpha = 0.4;
-            ctx.beginPath();
-            ctx.arc(canvas.width / 2, canvas.height / 2, 50, 0, Math.PI * 2);
-            ctx.fill();
-
-            videoElement.srcObject = null;
-            videoElement.src = canvas.toDataURL();
-        }
-    </script>
+    <div id="inviteLink">Share this link: <span id="link"></span></div>
+    <video id="localVideo" autoplay playsinline muted></video>
+    <video id="remoteVideo" autoplay playsinline></video>
+    <canvas id="canvas"></canvas>
 </body>
-</html>
+</html>`;
