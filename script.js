@@ -28,7 +28,11 @@ navigator.mediaDevices.getUserMedia({ video: true, audio: true })
 
 // Handle Remote Stream
 peerConnection.ontrack = (event) => {
-    document.getElementById('remoteVideo').srcObject = event.streams[0];
+    if (!document.getElementById('remoteVideo').srcObject) {
+        document.getElementById('remoteVideo').srcObject = event.streams[0];
+    }
+};
+
 };
 
 // Firebase Signaling (Real-time Room)
@@ -67,6 +71,15 @@ canvas.addEventListener('click', (e) => {
 
     db.ref('colors/' + Date.now()).set({ x, y, color });
 });
+
+peerConnection.oniceconnectionstatechange = () => {
+    if (peerConnection.iceConnectionState === 'failed') {
+        console.log("ICE Connection Failed. Retrying...");
+        peerConnection.restartIce();
+    }
+};
+
+
 
 // Sync Colors Across Users
 db.ref('colors').on('value', (snapshot) => {
