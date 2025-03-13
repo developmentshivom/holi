@@ -56,14 +56,8 @@ roomRef.on('value', async (snapshot) => {
 // 🎨 Color Throwing Feature (Canvas Interaction)
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
-
-// Resize Canvas
-function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-}
-resizeCanvas();
-window.addEventListener('resize', resizeCanvas);
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
 
 // Click to "Throw" Color
 canvas.addEventListener('click', (e) => {
@@ -71,15 +65,20 @@ canvas.addEventListener('click', (e) => {
     const y = e.clientY / canvas.height;
     const color = '#' + Math.floor(Math.random()*16777215).toString(16);
 
-    // Draw on Local Canvas
-    drawColor(x, y, color);
-
-    // Sync Color with Firebase
     db.ref('colors/' + Date.now()).set({ x, y, color });
 });
 
-// Draw Color on Canvas
-function drawColor(x, y, color) {
-    ctx.fillStyle = color;
-    ctx.beginPath();
-   
+// Sync Colors Across Users
+db.ref('colors').on('value', (snapshot) => {
+    snapshot.forEach(child => {
+        const { x, y, color } = child.val();
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(x * canvas.width, y * canvas.height, 20, 0, 2 * Math.PI);
+        ctx.fill();
+    });
+});
+
+// Generate Shareable Link
+document.getElementById('link').innerText = window.location.href;
+document.getElementById('link').href = window.location.href;
