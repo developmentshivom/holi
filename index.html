@@ -3,12 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" href="https://upload.wikimedia.org/wikipedia/commons/7/77/Google_favicon.svg">
-
     <title>WebRTC Holi App</title>
-   <body style="background: url('https://source.unsplash.com/1600x900/?holi,colors') no-repeat center center/cover;">
-
-    <script type="module" src="script.js"></script>
+    <script type="module" src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+    <script type="module" src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
+    <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+    <script src="script.js" defer></script>
     <style>
         body { margin: 0; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; background: url('holi-bg.jpg') no-repeat center center/cover; }
         video { position: absolute; width: 45%; height: 45%; object-fit: cover; border: 5px solid white; border-radius: 10px; }
@@ -24,4 +23,4 @@
     <video id="remoteVideo" autoplay playsinline></video>
     <canvas id="canvas"></canvas>
 </body>
-</html>
+</html>`;
